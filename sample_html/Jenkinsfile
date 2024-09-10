@@ -1,0 +1,71 @@
+pipeline {
+    agent {
+        docker {
+            image 'docker:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock' // Mount Docker socket to enable Docker commands
+        }
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout code from SCM (Git in this case)
+                checkout scm
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build the Docker image
+                    sh '''
+                    docker build -t my-html-app .
+                    '''
+                }
+            }
+        }
+        
+        stage('Run Docker Container') {
+            steps {
+                script {
+                    // Run the Docker container
+                    sh '''
+                    docker run -d -p 8080:80 --name my-html-app my-html-app
+                    '''
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    // Verify that the application is running
+                    sh '''
+                    curl -I http://localhost:8080
+                    '''
+                }
+            }
+        }
+        
+        stage('Cleanup') {
+            steps {
+                script {
+                    // Stop and remove the Docker container
+                    sh '''
+                    docker stop my-html-app || true
+                    docker rm my-html-app || true
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
